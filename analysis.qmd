@@ -2,4 +2,126 @@
 title: "Million Song Dataset"
 author: "ethan brattli"
 format: html
+execute:
+  echo: false
 ---
+
+```{r}
+#| message: false
+
+library(tidyverse)
+library(maps)
+```
+
+```{r}
+#| cache: true
+
+music <- read_csv("data/music.csv", show_col_types = FALSE)
+```
+
+```{r}
+names(music)
+```
+
+```{r}
+music |>
+  select(starts_with("artist.")) |>
+  str()
+```
+
+```{r}
+music |>
+  select(
+    artist.name,
+    artist.location,
+    artist.latitude,
+    artist.longitude,
+    artist.terms,
+    artist.familiarity,
+    artist.hotttnesss,
+    song.title,
+    song.year
+  ) |>
+  slice_head(n = 8)
+```
+
+```{r}
+music |>
+  select(
+    artist.familiarity,
+    artist.hotttnesss,
+    song.year,
+    song.tempo
+  ) |>
+  summary()
+```
+
+```{r}
+music_years <- music |>
+  filter(song.year != 0)
+
+ggplot(music_years, aes(x = song.year)) +
+  geom_histogram(binwidth = 1, fill = "#2C7FB8", color = "white") +
+  labs(
+    title = "Distribution of Song Release Years",
+    x = "Year",
+    y = "Number of songs",
+    subtitle = paste(nrow(music_years), "songs")
+  ) +
+  theme_minimal()
+```
+
+```{r}
+music |>
+  select(
+    artist.location,
+    release.name,
+    song.title,
+    song.year,
+    artist.familiarity,
+    artist.hotttnesss
+  ) |>
+  summarise(across(everything(), \(x) sum(x == 0, na.rm = TRUE))) |>
+  print(width = Inf)
+```
+
+```{r}
+music_locations <- music |>
+  filter(artist.latitude != 0 | artist.longitude != 0)
+
+ggplot() +
+  geom_polygon(
+    data = map_data("world"),
+    aes(x = long, y = lat, group = group),
+    fill = "gray90",
+    color = "gray60"
+  ) +
+  geom_point(
+    data = music_locations,
+    aes(x = artist.longitude, y = artist.latitude),
+    color = "#2C7FB8",
+    alpha = 0.45
+  ) +
+  coord_quickmap() +
+  labs(
+    title = "Artist Locations in the Million Song Dataset",
+    subtitle = "Locations are shown only for songs with recorded coordinates; coverage is incomplete",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+music |>
+  summarise(
+    usable_coordinates = sum(
+      artist.latitude != 0 | artist.longitude != 0,
+      na.rm = TRUE
+    ),
+    placeholder_coordinates = sum(
+      artist.latitude == 0 & artist.longitude == 0,
+      na.rm = TRUE
+    )
+  )
+```
